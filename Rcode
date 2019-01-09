@@ -1,0 +1,285 @@
+setwd("C:\\Users\\Owner\\Documents\\Rdata")
+load("dj_ss_data")
+
+players_p<- unique(players_p)
+length(players_p)
+
+df1<-as.data.frame(players_g)
+df2<-as.data.frame(game_logs_g)
+df3<-as.data.frame(teams_p)
+
+
+df1 <- df1[!duplicated(df1$id),]
+df2<-df2[!duplicated(df2$id),]
+df3<-df3[!duplicated(df3$id),]
+
+
+
+
+
+#merge players with game logs
+players_gamelog<- merge(df1, df2, by.x = "id", by.y= "player_id", all.x = TRUE)
+
+
+
+#take out bats unknown
+players_games_cleaned<-players_gamelog[players_gamelog$bats != "bats_unknown",]
+
+#take out bats switched
+players_games_cleaned<- players_games_cleaned[players_games_cleaned$bats != "bats_switch",]
+players_games_cleaned<-as.data.frame(players_games_cleaned)
+
+#find information on homeruns regarding left vs right
+colnames(players_games_cleaned)
+homes_runs<-aggregate(players_games_cleaned$home_runs,by=list(players_games_cleaned$bats),sum,na.rm = TRUE)
+
+home_runs$percent <- home_runs$home_runs/sum(home_runs$home_runs) * 100
+bp<- ggplot(homes_runs, aes(x="bats", y=sum, fill= "x"))+
+  geom_bar(width = 1, stat = "identity")
+bp
+pie <- bp + coord_polar("y", start=0)
+pie
+
+#find information on batting average (mean) regarding left vs right
+batt_average_mean<- aggregate(players_games_cleaned$batting_average, by=list(players_games_cleaned$bats),mean, na.rm = TRUE)
+batt_average_mean$percent<-batt_average_mean$x/sum(homes_runs$x) * 100                              
+
+#find information on RBI regarding left vs right
+players_RBI<- aggregate(players_games_cleaned$runs_batted_in, by=list(players_games_cleaned$bats), sum, na.rm = TRUE)
+players_RBI$percent <- players_RBI$x/sum(players_RBI$x) * 100
+players_RBI<- aggregate(players_games_cleaned$runs_batted_in, by=list(players_games_cleaned$bats), mean, na.rm = TRUE)
+
+#find informoation on amount of wins
+players_wins<-aggregate(players_games_cleaned$wins, by= list(players_games_cleaned$bats), sum, na.rm=TRUE)
+players_wins$percent<-players_wins$x/sum(players_wins$x) * 100
+
+
+#find information on amount of doubles
+players_doubles<-aggregate(players_games_cleaned$doubles, by = list(players_games_cleaned$bats), sum, na.rm= TRUE)
+players_doubles$percent<-players_doubles$x/sum(players_doubles$x) *100
+
+#find information on bases stolen (speed)
+players_stolen<-aggregate(players_games_cleaned$stolen_bases, by = list(players_games_cleaned$bats), sum, na.rm= TRUE)
+players_stolen$percen<-players_stolen$x/sum(players_stolen$x) * 100
+
+#seperate data frames left batters from right batters and compare means of variables
+batters_right<-unique(players_games_cleaned[players_games_cleaned$bats != "bats_left",])
+batters_left<- unique(players_games_cleaned[players_games_cleaned$bats != "bats_right",])
+
+cleanedbatters_right<-batters_right[!duplicated (batters_right$id),]
+cleanedbatters_left<-batters_left[!duplicated (batters_left$id),]
+
+
+#t- test to test means of wins
+#HO: Right batters the same mean of wins than Left batters
+#HA: Right batters have more wins than left batter
+
+t.test(cleanedbatters_right$wins, cleanedbatters_left$wins, alternative = c("greater"), mu= 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+#t = 3.0315, df = 1389.8, p-value = 0.001239
+#p<0.05 Reject null hypothesis
+
+
+
+#t- test to test means of triples
+#HO: Right hand batters have the same means in triples han left hand batters
+#HA: Right hand batters have higher means in triples than left hand batters
+
+t.test(cleanedbatters_right$triples, cleanedbatters_left$triples, alternative = c("greater"), mu= 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+#t = -0.43195, df = 788.38, p-value = 0.6671
+#p>0.05, fail to reject the null hypothesis
+
+
+#t- test to test means of homeruns
+#HO:Right handed batters have the same mean of homeruns as left handed batters
+#HA: Right handed batters a higher mean of homeruns than left handed batters
+
+t.test(cleanedbatters_right$home_runs, cleanedbatters_left$home_runs, alternative = c("greater"), mu= 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+#t = 1.4711, df = 1132, p-value = 0.07077
+#p>0.05, fail to reject the null hypothesis
+
+
+#t-test to test means of batting average
+#HO: Right hand batters have a the same means as left handed batters
+#HA: Right hand batters have higher mean than left handed batters
+
+t.test(cleanedbatters_right$batting_average, cleanedbatters_left$batting_average, alternative = c("greater"), mu= 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+#t = 0.46277, df = 930, p-value = 0.3218
+#p>0.05, fail to reject the null hypothesis
+
+
+#t-test to test means of Runs batted in
+#HO: Right hand batters have the same means as left batter in RBI
+#HA: Right hand batters have a lower mean than right handed batters in RBI
+
+t.test(cleanedbatters_right$runs_batted_in,cleanedbatters_left$runs_batted_in, alternative = c("less"), mu= 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+#t = 0.74154, df = 1064.8, p-value = 0.7707
+#p> 0.05, fail to reject null hypothesis
+
+
+
+#t-test to test mean of slugging percent
+#HO: right hand batters have the same mean of slugging percentage
+#HA: right hand batters have higher slugging percentage than left hand
+t.test(cleanedbatters_right$slugging_percentage,cleanedbatters_left$strike_percentage, alternative = c("greater"), mu= 0, paired = FALSE, var.equal = FALSE, conf.level = 0.95)
+#t = -7.3425, df = 467.41, p-value = 1
+#p> 0.05, fail to reject the null hypothesis
+
+
+#Mean Salary of Left vs Right (which one cost more?)
+max(cleanedbatters_left$salary)
+max(cleanedbatters_right$salary)
+
+install.packages(dplyr)
+
+#Develop a metric for each baseball position based on your research
+#Batters = (slugging percentage+ BA +RBI) x games played(total)
+batters_metric<-(cleanedbatters_left$slugging_percentage + cleanedbatters_left$batting_average + cleanedbatters_left$runs_batted_in* cleanedbatters_left$game_played)
+hist(batters_metric)
+
+#merge players with team names
+
+players_team_name<-merge(teams_p, players_gamelog, by.x= "id", by.y = "team_id.y", all.x = TRUE)
+players_team_name<-merge(teams_p, players_gamelog, by.x= "V2", by.y = "team_id.y", all.y = TRUE)
+
+
+teams_p<- cbind(teams_p$name, teams_p$id)
+teams_p<- as.data.frame(teams_p)
+df4<-select(players_gamelog,id, name, position_name)
+df5<-select(teams_p, V1,V2)
+df5<-unique(df5)
+
+players_team_name<- merge(df4, df5, by.x = "id", by.y = ""  )
+
+?merge
+
+#Pitchers= 
+pitchers_metric<- players_gamelog[players_gamelog$position_name == "P",]
+pitchers_metric<-pitchers_metric[!duplicated(pitchers_metric$id),]
+pitchers_metric$pitchers_metric2<- (pitchers_metric$pitcher_caught_stealing + pitchers_metric$pitcher_strikeouts)/ pitchers_metric$pitches_thrown
+View(pitchers_metric)
+hist(team_pitchers$x)
+pitchers_metric$team_name<-pitchers_metric$team_id.x
+pitchers_metric_data<- pitchers_metric[, c( "team_name", "pitchers_metric2")]
+team_pitchers<-aggregate(pitchers_metric_data$pitchers_metric2, by= list(pitchers_metric_data$team_name), mean, na.rm= TRUE)
+mean(team_pitchers$x)
+sd(team_pitchers$x)
+
+#RPitcher=
+rpitchers_metric<- players_gamelog[players_gamelog$position_name == "Reliever",]
+rpitchers_metric<-rpitchers_metric[!duplicated(rpitchers_metric$id),]
+rpitchers_metric$rpitcher_metric2<- (rpitchers_metric$innings_pitched - rpitchers_metric$inherited_runners_scored)/ rpitchers_metric$pitches_thrown
+unique_rpitchers<- rpitchers_metric[rpitchers_metric$rpitcher_metric2 != "Inf",]
+view(rpitchers_metric2)
+hist(team_rpitchers$x)
+unique_rpitchers$team_name <- unique_rpitchers$team_id.x
+rpitchers_metric_data<- unique_rpitchers[, c("team_name", "rpitcher_metric2")]
+team_rpitchers<-aggregate(rpitchers_metric_data$rpitcher_metric2, by= list(rpitchers_metric_data$team_name), mean, na.rm=TRUE)
+View(rpitchers_metric_data)
+mean(team_rpitchers$x)
+sd(team_rpitchers$x)
+
+
+#Catcher= 
+catchers_metric<- players_gamelog[players_gamelog$position_name == "Catcher",]
+catchers_metric<-catchers_metric[!duplicated(catchers_metric$id),]
+catchers_metric$catchers_metric2<- (catchers_metric$game_played * (catchers_metric$catcher_interferences + catchers_metric$catcher_stealers_caught))
+catchers_metric$team_name<-catchers_metric$team_id.x
+catchers_metric_data<- catchers_metric[, c("team_name", "catchers_metric2")]
+View(catchers_metric_data)
+team_catchers<-aggregate(catchers_metric_data$catchers_metric2, by= list(catchers_metric_data$team_name), mean, na.rm=TRUE)
+hist(team_catchers$x)
+mean(team_catchers$x)
+sd(team_catchers$x)
+
+
+
+#1B=
+first_base<-players_gamelog[players_gamelog$position_name == "First Base",]
+first_base_metric<-first_base[!duplicated(first_base$id),]
+#(fly ball out + groundball out) x (field turns to out + grounded into double plays) 
+first_base_metric$first_base_metric2<-first_base_metric$fly_ball_outs + first_base_metric$ground_ball_outs + first_base_metric$outfield_assists + first_base_metric$grounded_into_double_plays
+first_base_metric$team_name<-first_base_metric$team_id.x
+first_base_metric_data<-first_base_metric[ , c("first_base_metric2","team_name") ]
+team_first_base<-aggregate(first_base_metric_data$first_base_metric2, by= list(first_base_metric_data$team_name), mean, na.rm=TRUE)
+hist(team_first_base$x)
+mean(team_first_base$x)
+sd(team_first_base$x)
+
+
+#2B=
+second_base<-players_gamelog[players_gamelog$position_name == "Second Base",]
+second_base_metric<-second_base[!duplicated(second_base$id),]
+second_base_metric$second_base_metric2<- (second_base_metric$fly_ball_outs  + second_base_metric$ground_ball_outs + second_base_metric$outfield_assists + second_base_metric$grounded_into_double_plays)
+second_base_metric$team_name<- second_base_metric$team_id.x
+second_base_metric_data<- second_base_metric[, c("second_base_metric2", "team_name")]
+team_second_base<-aggregate(second_base_metric$second_base_metric2, by = list(second_base_metric_data$team_name), mean, na.rm= TRUE)
+hist(team_second_base$x)
+mean(team_second_base$x)
+sd(team_second_base$x)
+
+#3B= 
+third_base<-players_gamelog[players_gamelog$position_name == "Third Base",]
+third_base_metric<-third_base[!duplicated(third_base$id),]
+third_base_metric$third_base_metric2<- (third_base_metric$fly_ball_outs  + third_base_metric$ground_ball_outs + third_base_metric$outfield_assists + third_base_metric$grounded_into_double_plays)
+third_base_metric$team_name<- third_base_metric$team_id.x
+third_base_metric_data<-third_base_metric [,c("third_base_metric2", "team_name")]
+team_third_base<- aggregate(third_base_metric$third_base_metric2, by = list(third_base_metric_data$team_name), mean, na.rm= TRUE)
+hist(team_third_base$x)
+mean(team_third_base$x)
+sd(team_third_base$x)
+
+hist(third_base_metric2)
+
+#Rfield=
+rfield<-players_gamelog[players_gamelog$position_name == "Right Outfield",]
+rfield_metric<-rfield[!duplicated(rfield$id),]
+rfield_metric$rightfield_metric2<-(rfield_metric$fly_ball_outs + rfield_metric$outfield_assists) * rfield_metric$game_played
+rfield_metric$team_name<-rfield_metric$team_id.x
+rfield_metric_data<- rfield_metric[,c("rightfield_metric2", "team_name")]
+team_rfield<-aggregate(rfield_metric$rightfield_metric2, by= list(rfield_metric_data$team_name), mean, na.rm= TRUE)
+hist(team_rfield$x)
+mean(team_rfield$x)
+sd(team_rfield$x)
+
+#Lfield=
+lfield<-players_gamelog[players_gamelog$position_name == "Left Outfield",]
+lfield_metric<-lfield[!duplicated(lfield$id),]
+lfield_metric$leftfield_metric2<-(lfield_metric$fly_ball_outs + lfield_metric$outfield_assists) * lfield_metric$game_played
+lfield_metric$team_name<-lfield_metric$team_id.x
+lfield_metric_data<- lfield_metric[,c("leftfield_metric2", "team_name")]
+team_lfield<-aggregate(lfield_metric$leftfield_metric2, by= list(lfield_metric_data$team_name), mean, na.rm= TRUE)
+hist(team_lfield$x)
+mean(team_lfield$x)
+sd(team_lfield$x)
+
+#centerfield=
+cen_field<-players_gamelog[players_gamelog$position_name == "Center Outfield",]
+cen_field_metric<-cen_field[!duplicated(cen_field$id),]
+cen_field_metric$centerfield_metric2<-(cen_field_metric$fly_ball_outs + cen_field_metric$outfield_assists) * cen_field_metric$game_played
+cen_field_metric$team_name<-cen_field_metric$team_id.x
+cen_field_metric_data<- cen_field_metric[,c("centerfield_metric2", "team_name")]
+team_cen_field<-aggregate(cen_field_metric$centerfield_metric2, by= list(cen_field_metric_data$team_name), mean, na.rm= TRUE)
+hist(team_cen_field$x)
+mean(team_cen_field$x)
+sd(team_cen_field$x)
+
+
+#shortstop= 
+shortstop<-players_gamelog[players_gamelog$position_name == "Shortstop",]
+shortstop_metric<-third_base[!duplicated(third_base$id),]
+shortstop_metric$shortstop_metric2<-(shortstop_metric$grounded_into_double_plays +shortstop_metric$ground_ball_outs) 
+shortstop_metric$team_name<-shortstop_metric$team_id.x
+shortstop_metric_data<- shortstop_metric[,c("shortstop_metric2", "team_name")]
+team_shortstop<-aggregate(shortstop_metric$shortstop_metric2, by= list(shortstop_metric_data$team_name), mean, na.rm= TRUE)
+hist(team_shortstop$x)
+mean(team_shortstop$x)
+sd(team_shortstop$x)
+
+#Determine the best team in my division
+
+df5$totalmetric<-(team_catchers$x + team_pitchers$x + team_rpitchers$x + team_first_base$x+ team_second_base$x + team_third_base$x +team_rfield$x +team_lfield$x + team_cen_field$x +team_shortstop$x)
+
+table(df5)
+
+
+#Rank All team based on my metrics
